@@ -1,6 +1,6 @@
 <?php
 
-namespace Sorane\LaravelCloudflare\Events;
+namespace Ranetrace\LaravelCloudflare\Events;
 
 use Illuminate\Foundation\Events\Dispatchable;
 

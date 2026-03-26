@@ -1,6 +1,6 @@
 <?php
 
-namespace Sorane\LaravelCloudflare\Http\Controllers;
+namespace Ranetrace\LaravelCloudflare\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

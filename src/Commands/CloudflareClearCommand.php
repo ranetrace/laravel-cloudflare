@@ -1,11 +1,11 @@
 <?php
 
-namespace Sorane\LaravelCloudflare\Commands;
+namespace Ranetrace\LaravelCloudflare\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Config;
-use Sorane\LaravelCloudflare\LaravelCloudflare;
+use Ranetrace\LaravelCloudflare\LaravelCloudflare;
 
 class CloudflareClearCommand extends Command
 {

@@ -1,13 +1,13 @@
 <?php
 
-namespace Sorane\LaravelCloudflare;
+namespace Ranetrace\LaravelCloudflare;
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
-use Sorane\LaravelCloudflare\Commands\CloudflareCacheInfoCommand;
-use Sorane\LaravelCloudflare\Commands\CloudflareClearCommand;
-use Sorane\LaravelCloudflare\Commands\CloudflareRefreshCommand;
-use Sorane\LaravelCloudflare\Http\Controllers\CloudflareDiagnosticsController;
+use Ranetrace\LaravelCloudflare\Commands\CloudflareCacheInfoCommand;
+use Ranetrace\LaravelCloudflare\Commands\CloudflareClearCommand;
+use Ranetrace\LaravelCloudflare\Commands\CloudflareRefreshCommand;
+use Ranetrace\LaravelCloudflare\Http\Controllers\CloudflareDiagnosticsController;
 
 class LaravelCloudflareServiceProvider extends ServiceProvider
 {

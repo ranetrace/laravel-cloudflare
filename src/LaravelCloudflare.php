@@ -1,6 +1,6 @@
 <?php
 
-namespace Sorane\LaravelCloudflare;
+namespace Ranetrace\LaravelCloudflare;
 
 use Illuminate\Contracts\Cache\Repository as CacheContract;
 use Illuminate\Support\Arr;
@@ -9,9 +9,9 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Psr\SimpleCache\InvalidArgumentException;
-use Sorane\LaravelCloudflare\Events\CloudflareIpsRefreshed;
-use Sorane\LaravelCloudflare\Events\CloudflareRefreshFailed;
-use Sorane\LaravelCloudflare\Exceptions\EmptyCacheException;
+use Ranetrace\LaravelCloudflare\Events\CloudflareIpsRefreshed;
+use Ranetrace\LaravelCloudflare\Events\CloudflareRefreshFailed;
+use Ranetrace\LaravelCloudflare\Exceptions\EmptyCacheException;
 use Throwable;
 
 class LaravelCloudflare
@@ -215,7 +215,7 @@ class LaravelCloudflare
 
         $timeout = (int) Config::get('laravel-cloudflare.http.timeout', 10);
         $retry = Config::get('laravel-cloudflare.http.retry', [3, 200]);
-        $userAgent = Config::get('laravel-cloudflare.http.user_agent', 'usesorane/laravel-cloudflare');
+        $userAgent = Config::get('laravel-cloudflare.http.user_agent', 'ranetrace/laravel-cloudflare');
 
         try {
             $response = Http::withHeaders([

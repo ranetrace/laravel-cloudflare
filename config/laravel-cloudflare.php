@@ -34,7 +34,7 @@ return [
         'timeout' => env('CLOUDFLARE_HTTP_TIMEOUT', 10), // seconds
         // [attempts, sleepMilliseconds]
         'retry' => [env('CLOUDFLARE_HTTP_RETRY_ATTEMPTS', 3), env('CLOUDFLARE_HTTP_RETRY_SLEEP', 200)],
-        'user_agent' => env('CLOUDFLARE_HTTP_USER_AGENT', 'Laravel-Cloudflare-IP-Fetcher/1.0 (+https://github.com/usesorane/laravel-cloudflare)'),
+        'user_agent' => env('CLOUDFLARE_HTTP_USER_AGENT', 'Laravel-Cloudflare-IP-Fetcher/1.0 (+https://github.com/ranetrace/laravel-cloudflare)'),
         'endpoints' => [
             'ipv4' => 'https://www.cloudflare.com/ips-v4',
             'ipv6' => 'https://www.cloudflare.com/ips-v6',

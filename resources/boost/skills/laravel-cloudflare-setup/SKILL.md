@@ -18,7 +18,7 @@ Use this skill when:
 ### 1. Install the package
 
 ```bash
-composer require usesorane/laravel-cloudflare
+composer require ranetrace/laravel-cloudflare
 ```
 
 ### 2. Publish configuration (optional)
@@ -44,7 +44,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(/* ... */)
     ->withMiddleware(function (Middleware $middleware) {
         app()->booted(function () use ($middleware) {
-            $cloudflareIps = app(\Sorane\LaravelCloudflare\LaravelCloudflare::class)->all();
+            $cloudflareIps = app(\Ranetrace\LaravelCloudflare\LaravelCloudflare::class)->all();
             $middleware->trustProxies(at: $cloudflareIps);
         });
     })
@@ -89,7 +89,7 @@ php artisan cloudflare:cache-info
 Access IPs via the facade or service:
 
 ```php
-use Sorane\LaravelCloudflare\Facades\LaravelCloudflare;
+use Ranetrace\LaravelCloudflare\Facades\LaravelCloudflare;
 
 $allIps = LaravelCloudflare::all();      // Combined IPv4 + IPv6 array
 $ipv4Only = LaravelCloudflare::ipv4();   // IPv4 ranges only
@@ -110,7 +110,7 @@ Listen to these events for monitoring or custom logic:
 Example listener:
 
 ```php
-use Sorane\LaravelCloudflare\Events\CloudflareRefreshFailed;
+use Ranetrace\LaravelCloudflare\Events\CloudflareRefreshFailed;
 
 Event::listen(function (CloudflareRefreshFailed $event) {
     if ($event->ipv4Empty && $event->ipv6Empty) {

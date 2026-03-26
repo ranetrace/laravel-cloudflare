@@ -1,11 +1,11 @@
 <?php
 
-namespace Sorane\LaravelCloudflare\Facades;
+namespace Ranetrace\LaravelCloudflare\Facades;
 
 use Illuminate\Support\Facades\Facade;
 
 /**
- * @see \Sorane\LaravelCloudflare\LaravelCloudflare
+ * @see \Ranetrace\LaravelCloudflare\LaravelCloudflare
  *
  * @method static array all()
  * @method static array ipv4()
@@ -17,6 +17,6 @@ class LaravelCloudflare extends Facade
 {
     protected static function getFacadeAccessor(): string
     {
-        return \Sorane\LaravelCloudflare\LaravelCloudflare::class;
+        return \Ranetrace\LaravelCloudflare\LaravelCloudflare::class;
     }
 }

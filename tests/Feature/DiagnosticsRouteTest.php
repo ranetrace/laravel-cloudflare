@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Ranetrace\LaravelCloudflare\LaravelCloudflareServiceProvider;
 
 it('does not register the diagnostics route by default', function (): void {
     // Ensure default is disabled
@@ -15,7 +16,7 @@ it('registers diagnostics route when enabled', function (): void {
     config()->set('laravel-cloudflare.diagnostics.enabled', true);
 
     // Manually boot the provider again to apply conditional routes with updated config
-    (new \Sorane\LaravelCloudflare\LaravelCloudflareServiceProvider(app()))->boot();
+    (new LaravelCloudflareServiceProvider(app()))->boot();
 
     $response = $this->get('/cloudflare-diagnose', [
         'X-Forwarded-For' => '203.0.113.5',
@@ -40,7 +41,7 @@ it('registers diagnostics route at custom path', function (): void {
     config()->set('laravel-cloudflare.diagnostics.path', '/diag');
 
     // Manually boot the provider again to apply conditional routes with updated config
-    (new \Sorane\LaravelCloudflare\LaravelCloudflareServiceProvider(app()))->boot();
+    (new LaravelCloudflareServiceProvider(app()))->boot();
 
     $response = $this->get('/diag');
     $response->assertOk();

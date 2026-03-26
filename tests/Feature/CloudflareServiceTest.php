@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
-use Sorane\LaravelCloudflare\LaravelCloudflare;
+use Ranetrace\LaravelCloudflare\LaravelCloudflare;
 
 it('fetches and caches ipv4 and ipv6 lists via explicit refresh', function (): void {
     Http::fake([
@@ -59,7 +59,7 @@ it('uses config fallback when cache is empty', function (): void {
 
 it('prefers cache over config fallback', function (): void {
     Http::fake([
-        'www.cloudflare.com/ips-v4' => Http::response("1.1.1.1/32", 200),
+        'www.cloudflare.com/ips-v4' => Http::response('1.1.1.1/32', 200),
         'www.cloudflare.com/ips-v6' => Http::response('2606:4700::/32', 200),
     ]);
 

@@ -1,10 +1,10 @@
 <?php
 
-namespace Sorane\LaravelCloudflare\Tests;
+namespace Ranetrace\LaravelCloudflare\Tests;
 
 use Illuminate\Support\Facades\Cache;
 use Orchestra\Testbench\TestCase as Orchestra;
-use Sorane\LaravelCloudflare\LaravelCloudflareServiceProvider;
+use Ranetrace\LaravelCloudflare\LaravelCloudflareServiceProvider;
 
 class TestCase extends Orchestra
 {

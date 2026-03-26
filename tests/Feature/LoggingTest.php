@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Sorane\LaravelCloudflare\LaravelCloudflare;
+use Ranetrace\LaravelCloudflare\LaravelCloudflare;
 
 it('logs a warning when refresh fails and logging enabled', function (): void {
     Http::fake([

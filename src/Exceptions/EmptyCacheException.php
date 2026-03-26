@@ -1,6 +1,6 @@
 <?php
 
-namespace Sorane\LaravelCloudflare\Exceptions;
+namespace Ranetrace\LaravelCloudflare\Exceptions;
 
 use RuntimeException;
 

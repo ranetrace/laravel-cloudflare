@@ -1,8 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Http;
-use Sorane\LaravelCloudflare\Facades\LaravelCloudflare as LaravelCloudflareFacade;
-use Sorane\LaravelCloudflare\LaravelCloudflare;
+use Ranetrace\LaravelCloudflare\Facades\LaravelCloudflare as LaravelCloudflareFacade;
+use Ranetrace\LaravelCloudflare\LaravelCloudflare;
 
 it('facade proxies to the service', function (): void {
     Http::fake([

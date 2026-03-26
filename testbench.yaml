@@ -3,5 +3,5 @@ env:
   CACHE_DRIVER: array
 
 providers:
-  - Sorane\LaravelCloudflare\LaravelCloudflareServiceProvider
+  - Ranetrace\LaravelCloudflare\LaravelCloudflareServiceProvider
   - Workbench\App\Providers\WorkbenchServiceProvider

@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Http;
-use Sorane\LaravelCloudflare\LaravelCloudflare;
+use Ranetrace\LaravelCloudflare\LaravelCloudflare;
 
 it('can provide an array suitable for trust proxies', function (): void {
     Http::fake([

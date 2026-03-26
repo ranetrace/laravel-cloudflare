@@ -1,8 +1,8 @@
 # Laravel Cloudflare
 
-[![Latest Version](https://img.shields.io/packagist/v/usesorane/laravel-cloudflare.svg)](https://packagist.org/packages/usesorane/laravel-cloudflare)
-[![Tests](https://img.shields.io/github/actions/workflow/status/usesorane/laravel-cloudflare/laravel-package-tests.yml?branch=main&label=tests)](https://github.com/usesorane/laravel-cloudflare/actions/workflows/laravel-package-tests.yml)
-[![Total Downloads](https://img.shields.io/packagist/dt/usesorane/laravel-cloudflare.svg)](https://packagist.org/packages/usesorane/laravel-cloudflare)
+[![Latest Version](https://img.shields.io/packagist/v/ranetrace/laravel-cloudflare.svg)](https://packagist.org/packages/ranetrace/laravel-cloudflare)
+[![Tests](https://img.shields.io/github/actions/workflow/status/ranetrace/laravel-cloudflare/laravel-package-tests.yml?branch=main&label=tests)](https://github.com/ranetrace/laravel-cloudflare/actions/workflows/laravel-package-tests.yml)
+[![Total Downloads](https://img.shields.io/packagist/dt/ranetrace/laravel-cloudflare.svg)](https://packagist.org/packages/ranetrace/laravel-cloudflare)
 
 Retrieve the current Cloudflare IP ranges, cache them, automatically update them, and access them through a simple service. 
 
@@ -13,7 +13,7 @@ Use the IP list in your `TrustProxies` middleware to trust all Cloudflare IPs au
 Install the package via composer:
 
 ```bash
-composer require usesorane/laravel-cloudflare
+composer require ranetrace/laravel-cloudflare
 ```
 
 (Optional) Publish the config file:
@@ -69,7 +69,7 @@ return [
         'timeout' => env('CLOUDFLARE_HTTP_TIMEOUT', 10), // seconds
         // [attempts, sleepMilliseconds]
         'retry' => [env('CLOUDFLARE_HTTP_RETRY_ATTEMPTS', 3), env('CLOUDFLARE_HTTP_RETRY_SLEEP', 200)],
-        'user_agent' => env('CLOUDFLARE_HTTP_USER_AGENT', 'Laravel-Cloudflare-IP-Fetcher/1.0 (+https://github.com/usesorane/laravel-cloudflare)'),
+        'user_agent' => env('CLOUDFLARE_HTTP_USER_AGENT', 'Laravel-Cloudflare-IP-Fetcher/1.0 (+https://github.com/ranetrace/laravel-cloudflare)'),
         'endpoints' => [
             'ipv4' => 'https://www.cloudflare.com/ips-v4',
             'ipv6' => 'https://www.cloudflare.com/ips-v6',
@@ -139,13 +139,13 @@ Schedule::command('cloudflare:refresh')->twiceDaily(); // or ->daily(), ->hourly
 3. Trust Cloudflare proxies in `bootstrap/app.php`:
 
 ```php
-use Sorane\LaravelCloudflare\LaravelCloudflare;
+use Ranetrace\LaravelCloudflare\LaravelCloudflare;
 
 ->withMiddleware(function (Middleware $middleware) {
     // Your other middleware interactions here...
 
     app()->booted(function () use ($middleware) {
-        $cloudflareIps = app(\Sorane\LaravelCloudflare\LaravelCloudflare::class)->all();
+        $cloudflareIps = app(\Ranetrace\LaravelCloudflare\LaravelCloudflare::class)->all();
         $ipsToTrust = [
             ...$cloudflareIps,
             // Add any other IPs you want to trust here
@@ -170,7 +170,7 @@ php artisan cloudflare:cache-info
 ## The LaravelCloudflare service
 
 ```php
-use Sorane\LaravelCloudflare\LaravelCloudflare;
+use Ranetrace\LaravelCloudflare\LaravelCloudflare;
 
 $cloudflare = app(LaravelCloudflare::class);
 $cloudflare->refresh(); // fetch and cache immediately
@@ -276,7 +276,7 @@ The package dispatches events that you can listen to for custom logic:
 Fired when IP ranges are successfully fetched and cached.
 
 ```php
-use Sorane\LaravelCloudflare\Events\CloudflareIpsRefreshed;
+use Ranetrace\LaravelCloudflare\Events\CloudflareIpsRefreshed;
 
 // In your EventServiceProvider or listener
 Event::listen(function (CloudflareIpsRefreshed $event) {
@@ -295,7 +295,7 @@ Event::listen(function (CloudflareIpsRefreshed $event) {
 Fired when the refresh operation fails (e.g., network error, empty response).
 
 ```php
-use Sorane\LaravelCloudflare\Events\CloudflareRefreshFailed;
+use Ranetrace\LaravelCloudflare\Events\CloudflareRefreshFailed;
 
 Event::listen(function (CloudflareRefreshFailed $event) {
     // $event->ipv4Empty - bool indicating if IPv4 fetch failed

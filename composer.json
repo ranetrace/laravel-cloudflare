@@ -1,13 +1,13 @@
 {
-    "name": "usesorane/laravel-cloudflare",
+    "name": "ranetrace/laravel-cloudflare",
     "description": "Fetch and Cache all IP addresses of Cloudflare to use in your Laravel application.",
     "keywords": [
-        "Sorane",
+        "Ranetrace",
         "Laravel",
         "Cloudflare",
         "laravel-cloudflare"
     ],
-    "homepage": "https://github.com/usesorane/laravel-cloudflare",
+    "homepage": "https://github.com/ranetrace/laravel-cloudflare",
     "license": "MIT",
     "authors": [
         {
@@ -36,12 +36,12 @@
     },
     "autoload": {
         "psr-4": {
-            "Sorane\\LaravelCloudflare\\": "src/"
+            "Ranetrace\\LaravelCloudflare\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Sorane\\LaravelCloudflare\\Tests\\": "tests/",
+            "Ranetrace\\LaravelCloudflare\\Tests\\": "tests/",
             "Workbench\\App\\": "workbench/app/"
         }
     },
@@ -64,10 +64,10 @@
     "extra": {
         "laravel": {
             "providers": [
-                "Sorane\\LaravelCloudflare\\LaravelCloudflareServiceProvider"
+                "Ranetrace\\LaravelCloudflare\\LaravelCloudflareServiceProvider"
             ],
             "aliases": {
-                "LaravelCloudflare": "Sorane\\LaravelCloudflare\\Facades\\LaravelCloudflare"
+                "LaravelCloudflare": "Ranetrace\\LaravelCloudflare\\Facades\\LaravelCloudflare"
             }
         }
     },

@@ -1,5 +1,5 @@
 <?php
 
-use Sorane\LaravelCloudflare\Tests\TestCase;
+use Ranetrace\LaravelCloudflare\Tests\TestCase;
 
 uses(TestCase::class)->in('Feature');

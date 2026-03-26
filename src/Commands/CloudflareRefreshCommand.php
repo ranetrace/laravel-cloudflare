@@ -1,9 +1,9 @@
 <?php
 
-namespace Sorane\LaravelCloudflare\Commands;
+namespace Ranetrace\LaravelCloudflare\Commands;
 
 use Illuminate\Console\Command;
-use Sorane\LaravelCloudflare\LaravelCloudflare;
+use Ranetrace\LaravelCloudflare\LaravelCloudflare;
 
 class CloudflareRefreshCommand extends Command
 {
