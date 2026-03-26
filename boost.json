@@ -10,6 +10,8 @@
     ],
     "sail": false,
     "skills": [
-        "pest-testing"
+        "laravel-best-practices",
+        "pest-testing",
+        "spatie-laravel-php-standards"
     ]
 }

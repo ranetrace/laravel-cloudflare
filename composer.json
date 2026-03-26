@@ -12,13 +12,13 @@
     "authors": [
         {
             "name": "Rutger Broerze",
-            "email": "contact@sorane.io",
+            "email": "contact@ranetrace.com",
             "role": "Developer"
         }
     ],
     "require": {
-        "php": "^8.3",
-        "illuminate/contracts": "^11.0||^12.0"
+        "php": "^8.4",
+        "illuminate/support": "^11.0||^12.0||^13.0"
     },
     "require-dev": {
         "larastan/larastan": "^3.0",
