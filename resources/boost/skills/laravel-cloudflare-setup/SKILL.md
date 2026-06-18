@@ -81,8 +81,9 @@ php artisan cloudflare:cache-info
 | Command | Description |
 |---------|-------------|
 | `cloudflare:refresh` | Fetch and cache latest IPs from Cloudflare |
-| `cloudflare:cache-info` | Display cache status (supports `--json` flag) |
-| `cloudflare:clear` | Clear cache (`--current` or `--last-good` options) |
+| `cloudflare:cache-info` | Display cache + durable last_good status (supports `--json` flag) |
+| `cloudflare:clear` | Clear current cache and/or durable last_good (`--current` / `--last-good`) |
+| `cloudflare:bundle-fallback` | Maintainer-only: regenerate the package-bundled fallback (run from the package repo, not host apps) |
 
 ## Programmatic API
 
@@ -125,11 +126,12 @@ Key settings in `config/laravel-cloudflare.php`:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `cache.store` | `null` | Cache store to use (null = default) |
-| `cache.ttl` | 7 days | Cache duration in seconds |
-| `cache.allow_stale` | `true` | Fall back to last-known-good IPs |
-| `fallback.ipv4` | `[]` | Static fallback IPv4 ranges |
-| `fallback.ipv6` | `[]` | Static fallback IPv6 ranges |
+| `cache.store` | `null` | Cache store for the volatile `current` list (null = default) |
+| `cache.ttl` | 7 days | Cache duration in seconds for `current` |
+| `cache.allow_stale` | `true` | Fall back to durable last_good when `current` is missing |
+| `last_good.path` | `storage_path('laravel-cloudflare/last_good.json')` | Durable last_good file (survives cache:clear/FLUSHDB) |
+| `fallback.ipv4` | `[]` | Override the bundled IPv4 fallback (empty = use bundled defaults) |
+| `fallback.ipv6` | `[]` | Override the bundled IPv6 fallback (empty = use bundled defaults) |
 | `diagnostics.enabled` | `false` | Enable debug endpoint |
 
 ## Diagnostics (Optional)
@@ -174,21 +176,6 @@ If `laravel_ip` matches `cf_connecting_ip`, proxy trust is configured correctly.
 
 ### First deployment with empty cache
 
-Add static fallback IPs in `config/laravel-cloudflare.php`:
+No action needed: the package ships an authoritative bundled fallback (`resources/cloudflare-ips.php`) that is served automatically until the first `cloudflare:refresh` runs. Leave `fallback.ipv4/ipv6` empty to use it.
 
-```php
-'fallback' => [
-    'ipv4' => [
-        '173.245.48.0/20',
-        '103.21.244.0/22',
-        // ... add current Cloudflare IPv4 ranges
-    ],
-    'ipv6' => [
-        '2400:cb00::/32',
-        '2606:4700::/32',
-        // ... add current Cloudflare IPv6 ranges
-    ],
-],
-```
-
-These are used if the cache is empty (e.g., fresh deployment before first refresh).
+Only set `fallback.ipv4/ipv6` in `config/laravel-cloudflare.php` if you want to pin your own ranges; a non-empty list overrides the bundled defaults for that type. If you see a throttled *"serving static fallback Cloudflare IPs"* warning in your logs, your refresh pipeline (scheduler/`cloudflare:refresh`) is not running — fix that rather than relying on the fallback.

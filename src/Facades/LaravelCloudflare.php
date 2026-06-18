@@ -7,11 +7,11 @@ use Illuminate\Support\Facades\Facade;
 /**
  * @see \Ranetrace\LaravelCloudflare\LaravelCloudflare
  *
- * @method static array all()
- * @method static array ipv4()
- * @method static array ipv6()
+ * @method static array<int, string> all()
+ * @method static array<int, string> ipv4()
+ * @method static array<int, string> ipv6()
  * @method static bool refresh()
- * @method static array cacheInfo()
+ * @method static array<string, mixed> cacheInfo()
  */
 class LaravelCloudflare extends Facade
 {

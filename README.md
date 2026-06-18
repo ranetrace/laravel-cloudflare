@@ -40,20 +40,16 @@ Content of the config file:
 ```php
 return [
     'cache' => [
-        // Cache store to use (null = default store)
+        // Cache store to use for the volatile "current" list (null = default store)
         'store' => env('CLOUDFLARE_CACHE_STORE', null),
 
-        // Primary cache keys ("current" – refreshed list) and fallback ("last_good" – permanent)
+        // Cache keys for the "current" (refreshed, TTL'd) list.
+        // NOTE: last_good no longer lives in the cache; see the "last_good" section below.
         'keys' => [
             'current' => [
                 'all' => 'cloudflare:ips:current',
                 'v4' => 'cloudflare:ips:v4:current',
                 'v6' => 'cloudflare:ips:v6:current',
-            ],
-            'last_good' => [
-                'all' => 'cloudflare:ips:last_good',
-                'v4' => 'cloudflare:ips:v4:last_good',
-                'v6' => 'cloudflare:ips:v6:last_good',
             ],
         ],
 
@@ -62,6 +58,15 @@ return [
 
         // Allow falling back to the last known good list when current is missing/expired.
         'allow_stale' => env('CLOUDFLARE_ALLOW_STALE', true),
+
+        // Throw instead of returning [] when current, last_good and static fallback are all empty.
+        'throw_on_empty' => env('CLOUDFLARE_THROW_ON_EMPTY', false),
+    ],
+
+    // Durable "last_good" store. Unlike the cache, this survives cache:clear/FLUSHDB
+    // (e.g. another app flushing a shared Redis) and deploys when storage/ is shared.
+    'last_good' => [
+        'path' => env('CLOUDFLARE_LAST_GOOD_PATH', storage_path('laravel-cloudflare/last_good.json')),
     ],
 
     // HTTP client settings for fetching IP ranges from Cloudflare
@@ -79,9 +84,16 @@ return [
     'logging' => [
         // Whether to log a warning when a fetch to Cloudflare endpoints fails
         'failed_fetch' => env('CLOUDFLARE_LOG_FAILED_FETCH', true),
+
+        // Warn (throttled, persisted durably) when the static fallback layer is actually
+        // served — reaching it means current AND last_good are empty.
+        'static_fallback' => env('CLOUDFLARE_LOG_STATIC_FALLBACK', true),
+        'static_fallback_throttle' => env('CLOUDFLARE_STATIC_FALLBACK_THROTTLE', 60 * 60),
     ],
 
-    // Static fallback IPs to use when cache is empty (both current and last_good).
+    // Static fallback IPs, used only as a cold-start floor before the first refresh.
+    // Leave EMPTY to use the authoritative list bundled with the package
+    // (resources/cloudflare-ips.php). A non-empty list here overrides the bundled defaults.
     'fallback' => [
         'ipv4' => [],
         'ipv6' => [],
@@ -103,7 +115,8 @@ return [
 	- https://www.cloudflare.com/ips-v4
 	- https://www.cloudflare.com/ips-v6
 - Validates IP ranges in CIDR notation before caching
-- Caches the lists (default 7 days) and keeps a permanent fallback copy
+- Caches the `current` list (default 7 days) and keeps a durable `last_good` copy outside the cache (a JSON file under `storage/`) that survives `cache:clear`/`FLUSHDB`/deploys
+- Ships a package-bundled static fallback so a brand-new install always has IPs to trust before the first refresh
 - Provides commands to manage the cache:
     - `php artisan cloudflare:refresh` - fetch and cache the latest IPs
     - `php artisan cloudflare:cache-info` - view cache status (supports `--json` flag)
@@ -180,34 +193,42 @@ $allIps = $cloudflare->all();
 $cacheInfo = $cloudflare->cacheInfo();
 ```
 
-## Caching design (current + last_good)
+## Caching design (current + durable last_good)
 
-To avoid network calls during request handling and still remain resilient if Cloudflare is temporarily unreachable, the package maintains two cache layers:
+To avoid network calls during request handling and still remain resilient if Cloudflare is temporarily unreachable, the package maintains layered storage:
 
-* current – the actively refreshed list with a configurable TTL (default 7 days).
-* last_good – a permanent copy updated only after a successful refresh. It is not cleared on a failed refresh.
+* **current** – the actively refreshed list, held in the cache with a configurable TTL (default 7 days). It is fine for this to be wiped: reads fall through to last_good.
+* **last_good** – a copy updated only after a successful refresh, persisted in a **durable store outside the cache** (a JSON file under `storage/`, path configurable). It is not cleared on a failed refresh, and — unlike the cache — it survives `cache:clear`/`FLUSHDB` (e.g. another app flushing a shared Redis) and deploys when `storage/` is shared between releases.
+
+> **Why durable?** Earlier versions kept last_good in the same cache store as current. That meant a single `cache:clear` (which is `FLUSHDB` on the Redis driver, ignoring key prefixes) could wipe *both* layers at once, and with an empty static fallback the package would hand `trustProxies()` an empty list. Keeping last_good outside the cache removes that failure mode.
 
 Lookup order for `ipv4()`, `ipv6()`, and `all()`:
-1. current list
-2. last_good list
-3. config fallback (if configured)
-4. (logs a warning and returns an empty array only if none of the above exist – typically only before the very first refresh)
+1. current list (cache)
+2. last_good list (durable store)
+3. static fallback (published config if non-empty, else the package-bundled list)
+4. (logs a warning and returns an empty array only if all of the above are empty – effectively never, since the bundled fallback ships non-empty)
 
 Relevant config options (`config/laravel-cloudflare.php`):
-* `cache.ttl` – lifetime for current list (seconds, null = forever).
-* `cache.allow_stale` – whether to fall back to last_good when current missing.
-* `cache.throw_on_empty` – throw exception when cache is empty instead of returning empty array (default: false).
-* Distinct key sets under `cache.keys.current` and `cache.keys.last_good`.
-* `fallback.ipv4` and `fallback.ipv6` – static IP arrays to use when cache is empty (see below).
+* `cache.ttl` – lifetime for the current list (seconds, null = forever).
+* `cache.allow_stale` – whether to fall back to last_good when current is missing.
+* `cache.throw_on_empty` – throw an exception instead of returning an empty array when everything is empty (default: false).
+* `last_good.path` – absolute path to the durable last_good JSON file (`CLOUDFLARE_LAST_GOOD_PATH`).
+* `logging.static_fallback` / `logging.static_fallback_throttle` – warn (throttled) when the static fallback layer is actually served.
+* `fallback.ipv4` and `fallback.ipv6` – optional static IP arrays that override the bundled defaults (see below).
 
 Operational recommendation:
 * Run `cloudflare:refresh` in your deployment pipeline and via the scheduler.
-* Keep the TTL of last_good infinite (null) to ensure a fallback is always available.
-* Regularly check logs and use `cloudflare:cache-info` to monitor cache status.
+* Keep `storage/` shared between releases (the default on Forge/Envoyer/Deployer) so last_good carries across deploys.
+* The durable file is regenerated runtime data — add `storage/laravel-cloudflare/` to your `.gitignore`.
+* Regularly check logs and use `cloudflare:cache-info` to monitor cache + durable status.
 
-## Static fallback IPs (optional)
+## Static fallback IPs
 
-As a safety net, you can configure static fallback IPs that will be used when the cache is completely empty (e.g., before the first `cloudflare:refresh` runs). This ensures your app always has IPs to trust, even on first deployment.
+The static fallback is the cold-start floor: it is used only when both `current` and `last_good` are empty (e.g. on a brand-new install before the first `cloudflare:refresh`). It ensures your app always has IPs to trust, even on first deployment.
+
+**You do not need to configure anything.** The package ships an authoritative fallback list (`resources/cloudflare-ips.php`) that is used automatically. The published config keeps `fallback.ipv4/ipv6` empty, which means *"use the bundled defaults"* — so there is no stale list rotting in your repo.
+
+If you want to pin your own ranges instead, set a non-empty list; a non-empty value overrides the bundled defaults for that type:
 
 ```php
 // In config/laravel-cloudflare.php
@@ -215,18 +236,26 @@ As a safety net, you can configure static fallback IPs that will be used when th
     'ipv4' => [
         '173.245.48.0/20',
         '103.21.244.0/22',
-        '103.22.200.0/22',
-        // ... add more from https://www.cloudflare.com/ips-v4
+        // ... empty = use the package-bundled list
     ],
     'ipv6' => [
         '2400:cb00::/32',
-        '2606:4700::/32',
-        // ... add more from https://www.cloudflare.com/ips-v6
+        // ... empty = use the package-bundled list
     ],
 ],
 ```
 
-**Note:** These fallback IPs are only used when both cache layers (current and last_good) are empty. Once `cloudflare:refresh` runs successfully, the cached IPs take precedence. Keep your fallback IPs updated periodically by checking https://www.cloudflare.com/ips/
+**Log-on-use:** whenever the static fallback is the layer actually served, the package emits a throttled (default once/hour) warning — *"serving static fallback Cloudflare IPs — the refresh pipeline may be broken"*. Reaching this layer means `current` and `last_good` are both empty, so it is a signal to check your scheduler/`cloudflare:refresh`, not a normal steady state. The throttle marker is persisted in the durable store so it survives cache clears.
+
+### Maintainers: regenerating the bundled list
+
+The bundled list is refreshed from the live Cloudflare endpoints with a maintainer command, run from the package repo before tagging a release:
+
+```bash
+php artisan cloudflare:bundle-fallback
+```
+
+This rewrites `resources/cloudflare-ips.php`. It is a dev/release tool and is not intended to be run inside host applications.
 
 ## Diagnostics route (optional)
 
@@ -332,17 +361,25 @@ php artisan cloudflare:cache-info --json
 
 ### cloudflare:clear
 
-Clears cached IP ranges. Useful for testing or troubleshooting.
+Clears stored IP ranges. Useful for testing or troubleshooting.
 
 ```bash
-# Clear all caches (current and last_good)
+# Clear everything (current cache and the durable last_good store)
 php artisan cloudflare:clear
 
-# Clear only current cache
+# Clear only the current cache
 php artisan cloudflare:clear --current
 
-# Clear only last_good cache
+# Clear only the durable last_good store
 php artisan cloudflare:clear --last-good
+```
+
+### cloudflare:bundle-fallback
+
+**Maintainer tool.** Fetches the live Cloudflare ranges and rewrites the package-bundled fallback (`resources/cloudflare-ips.php`). Run from the package repo before tagging a release; it is not meant for host apps.
+
+```bash
+php artisan cloudflare:bundle-fallback
 ```
 
 ## Why trusting proxies is important
@@ -405,14 +442,15 @@ See the Laravel Octane documentation for more details: https://laravel.com/docs/
 
 ## Security Considerations
 
-### Cache Store Security
+### Cache & Durable Store Security
 
-The IP ranges cached by this package become your trusted proxy list. If an attacker can compromise your cache store (Redis, Memcached, etc.), they could inject malicious IPs into the trusted proxy list, allowing them to spoof forwarding headers.
+The IP ranges stored by this package become your trusted proxy list. If an attacker can compromise your cache store (Redis, Memcached, etc.) **or write to the durable `last_good` file** (`storage/laravel-cloudflare/last_good.json`), they could inject malicious IPs into the trusted proxy list, allowing them to spoof forwarding headers.
 
 **Recommendations:**
 - Secure your cache store with proper authentication and network isolation
 - Use a dedicated cache store for security-critical data if needed
-- Monitor cache access logs for suspicious activity
+- Keep `storage/` writable only by the application user and protect it like any other application secret
+- Monitor cache and filesystem access logs for suspicious activity
 - Document this risk in your security procedures
 
 ### IP Validation

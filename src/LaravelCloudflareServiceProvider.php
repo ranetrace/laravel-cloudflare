@@ -4,6 +4,7 @@ namespace Ranetrace\LaravelCloudflare;
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Ranetrace\LaravelCloudflare\Commands\CloudflareBundleFallbackCommand;
 use Ranetrace\LaravelCloudflare\Commands\CloudflareCacheInfoCommand;
 use Ranetrace\LaravelCloudflare\Commands\CloudflareClearCommand;
 use Ranetrace\LaravelCloudflare\Commands\CloudflareRefreshCommand;
@@ -35,6 +36,7 @@ class LaravelCloudflareServiceProvider extends ServiceProvider
                 CloudflareRefreshCommand::class,
                 CloudflareCacheInfoCommand::class,
                 CloudflareClearCommand::class,
+                CloudflareBundleFallbackCommand::class,
             ]);
         }
 

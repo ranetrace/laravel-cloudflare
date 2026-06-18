@@ -2,20 +2,16 @@
 
 return [
     'cache' => [
-        // Cache store to use (null = default store)
+        // Cache store to use for the volatile "current" list (null = default store).
         'store' => env('CLOUDFLARE_CACHE_STORE', null),
 
-        // Primary cache keys ("current" – refreshed list) and fallback ("last_good" – permanent)
+        // Cache keys for the "current" (refreshed, TTL'd) list.
+        // NOTE: last_good no longer lives in the cache; see the "last_good" section below.
         'keys' => [
             'current' => [
                 'all' => 'cloudflare:ips:current',
                 'v4' => 'cloudflare:ips:v4:current',
                 'v6' => 'cloudflare:ips:v6:current',
-            ],
-            'last_good' => [
-                'all' => 'cloudflare:ips:last_good',
-                'v4' => 'cloudflare:ips:v4:last_good',
-                'v6' => 'cloudflare:ips:v6:last_good',
             ],
         ],
 
@@ -25,8 +21,17 @@ return [
         // Allow falling back to the last known good list when current is missing/expired.
         'allow_stale' => env('CLOUDFLARE_ALLOW_STALE', true),
 
-        // Throw exception when cache is empty (both current and last_good) instead of returning empty array
+        // Throw exception when everything is empty (current, last_good and static fallback)
+        // instead of returning an empty array.
         'throw_on_empty' => env('CLOUDFLARE_THROW_ON_EMPTY', false),
+    ],
+
+    // Durable "last_good" store. Unlike the cache, this survives cache:clear/FLUSHDB
+    // (e.g. another app flushing a shared Redis) and deploys when storage/ is shared,
+    // so it can actually act as a fallback after the volatile cache is wiped.
+    'last_good' => [
+        // Absolute path to the JSON file holding the last known good lists.
+        'path' => env('CLOUDFLARE_LAST_GOOD_PATH', storage_path('laravel-cloudflare/last_good.json')),
     ],
 
     // HTTP client settings for fetching IP ranges from Cloudflare
@@ -44,18 +49,28 @@ return [
     'logging' => [
         // Whether to log a warning when a fetch to Cloudflare endpoints fails
         'failed_fetch' => env('CLOUDFLARE_LOG_FAILED_FETCH', true),
+
+        // Whether to warn when the static fallback layer is actually served. Reaching it
+        // means current AND last_good are empty (the refresh pipeline is likely broken).
+        'static_fallback' => env('CLOUDFLARE_LOG_STATIC_FALLBACK', true),
+
+        // Throttle window (seconds) for the static-fallback warning, persisted durably.
+        'static_fallback_throttle' => env('CLOUDFLARE_STATIC_FALLBACK_THROTTLE', 60 * 60),
     ],
 
-    // Static fallback IPs to use when cache is empty (both current and last_good).
-    // This is useful as a safety net to ensure your app always has IPs to trust,
-    // even before the first cloudflare:refresh runs.
-    // You can populate these with current Cloudflare IPs from https://www.cloudflare.com/ips/
+    // Static fallback IPs used only as a cold-start floor, when both cache layers
+    // (current and last_good) are empty — typically only on a brand-new install
+    // before the first cloudflare:refresh runs.
+    //
+    // Leave these EMPTY to use the authoritative list bundled with the package
+    // (resources/cloudflare-ips.php). Set them only if you want to pin your own
+    // ranges; a non-empty list here overrides the bundled defaults for that type.
     'fallback' => [
         'ipv4' => [
-            // Example: '173.245.48.0/20', '103.21.244.0/22', ...
+            // empty = use the package-bundled Cloudflare ranges
         ],
         'ipv6' => [
-            // Example: '2400:cb00::/32', '2606:4700::/32', ...
+            // empty = use the package-bundled Cloudflare ranges
         ],
     ],
 

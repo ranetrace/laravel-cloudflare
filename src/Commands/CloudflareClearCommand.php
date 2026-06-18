@@ -9,19 +9,23 @@ use Ranetrace\LaravelCloudflare\LaravelCloudflare;
 
 class CloudflareClearCommand extends Command
 {
-    public $signature = 'cloudflare:clear {--current : Clear only current cache} {--last-good : Clear only last_good cache}';
+    public $signature = 'cloudflare:clear {--current : Clear only current cache} {--last-good : Clear only last_good durable store}';
 
-    public $description = 'Clear cached Cloudflare IP ranges';
+    public $description = 'Clear cached Cloudflare IP ranges (current cache and/or the durable last_good store)';
 
     public function handle(): int
     {
         $service = app(LaravelCloudflare::class);
         $keys = Config::get('laravel-cloudflare.cache.keys');
 
-        $clearCurrent = $this->option('current') || (! $this->option('current') && ! $this->option('last-good'));
-        $clearLastGood = $this->option('last-good') || (! $this->option('current') && ! $this->option('last-good'));
+        $onlyCurrent = (bool) $this->option('current');
+        $onlyLastGood = (bool) $this->option('last-good');
 
-        $clearedKeys = [];
+        // With no flags, clear both; otherwise clear only the requested store(s).
+        $clearCurrent = $onlyCurrent || ! $onlyLastGood;
+        $clearLastGood = $onlyLastGood || ! $onlyCurrent;
+
+        $clearedCount = 0;
 
         if ($clearCurrent) {
             $currentKeys = [
@@ -32,28 +36,20 @@ class CloudflareClearCommand extends Command
 
             foreach ($currentKeys as $key) {
                 $service->cache->forget($key);
-                $clearedKeys[] = $key;
+                $clearedCount++;
             }
 
             $this->info('Cleared current cache keys.');
         }
 
         if ($clearLastGood) {
-            $lastGoodKeys = [
-                Arr::get($keys, 'last_good.all', 'cloudflare:ips:last_good'),
-                Arr::get($keys, 'last_good.v4', 'cloudflare:ips:v4:last_good'),
-                Arr::get($keys, 'last_good.v6', 'cloudflare:ips:v6:last_good'),
-            ];
+            $service->durable->forgetLists();
+            $clearedCount++;
 
-            foreach ($lastGoodKeys as $key) {
-                $service->cache->forget($key);
-                $clearedKeys[] = $key;
-            }
-
-            $this->info('Cleared last_good cache keys.');
+            $this->info('Cleared durable last_good store ('.$service->durable->location().').');
         }
 
-        $this->line('Total keys cleared: '.count($clearedKeys));
+        $this->line('Total stores cleared: '.$clearedCount);
 
         return self::SUCCESS;
     }
