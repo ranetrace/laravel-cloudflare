@@ -100,6 +100,10 @@ $success = LaravelCloudflare::refresh(); // Fetch and cache immediately
 $info = LaravelCloudflare::cacheInfo();  // Get cache status
 ```
 
+`all()`, `ipv4()` and `ipv6()` answer through four layers — cache, durable `last_good`, package-bundled ranges, `[]` — and a cache that is empty or a store that cannot be read at all falls through them with a throttled warning instead of throwing. Do not wrap these calls in `try`/`catch`, check the cache first, or keep a fallback list of your own; that is what the layers are. (`cache.throw_on_empty` is the one opt-in that makes them throw, and only when every layer is empty.)
+
+`refresh()` and `cacheInfo()` do surface a broken store, by design: one is writing to it and the other is reporting on it.
+
 ## Events
 
 Listen to these events for monitoring or custom logic:
@@ -131,6 +135,7 @@ Key settings in `config/laravel-cloudflare.php`:
 | `cache.ttl` | 7 days | Cache duration in seconds for `current` |
 | `cache.allow_stale` | `true` | Fall back to durable last_good when `current` is missing |
 | `trust_proxies.additional` | `[]` | Proxies `TrustCloudflareProxies` trusts besides Cloudflare's ranges |
+| `logging.unreachable_cache` | `true` | Warn (throttled) when the cache store cannot be read at all |
 | `last_good.path` | `storage_path('laravel-cloudflare/last_good.json')` | Durable last_good file (survives cache:clear/FLUSHDB) |
 | `fallback.ipv4` | `[]` | Override the bundled IPv4 fallback (empty = use bundled defaults) |
 | `fallback.ipv6` | `[]` | Override the bundled IPv6 fallback (empty = use bundled defaults) |
@@ -169,6 +174,12 @@ If `laravel_ip` matches `cf_connecting_ip`, proxy trust is configured correctly.
 1. Run `php artisan cloudflare:refresh` to fetch IPs
 2. Check `php artisan cloudflare:cache-info` for cache status
 3. Verify cache driver is working: `php artisan cache:clear && php artisan cloudflare:refresh`
+
+### Log says "the cache store could not be read"
+
+The cache store is down or not set up (an unmigrated `database` store, a Redis that is not answering). Reads are unaffected in the sense that they still return a list — they fall through to `last_good` and the bundled ranges — so this warning is the only signal that the top layer is gone. It is throttled to once an hour (`logging.unreachable_cache_throttle`) and can be silenced with `logging.unreachable_cache`, though the store is the thing to fix.
+
+Run `php artisan cloudflare:cache-info` or `php artisan cloudflare:refresh` to see the underlying store error: unlike the read path, those two do not swallow it.
 
 ### Client IP still shows Cloudflare IP
 
