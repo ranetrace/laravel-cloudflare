@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Ranetrace\LaravelCloudflare\LaravelCloudflare;
 
 it('fetches and caches ipv4 and ipv6 lists via explicit refresh', function (): void {
@@ -72,6 +73,31 @@ it('prefers cache over config fallback', function (): void {
     // Should use cached values, not fallback
     expect($service->ipv4())->toEqual(['1.1.1.1/32']);
     expect($service->ipv6())->toEqual(['2606:4700::/32']);
+});
+
+/**
+ * A cache store that cannot answer is a miss, not an exception: the read
+ * continues down last_good and the static fallback rather than taking the
+ * caller with it. The `database` store on a connection without the cache table
+ * is the shape this actually arrives in — it is the default store, so it is
+ * what a fresh install without a .env resolves to.
+ */
+it('treats an unreachable cache store as a miss', function (): void {
+    Config::set('cache.default', 'database');
+    Config::set('laravel-cloudflare.fallback.ipv4', ['173.245.48.0/20']);
+    Config::set('laravel-cloudflare.fallback.ipv6', ['2400:cb00::/32']);
+
+    Log::spy();
+
+    $service = new LaravelCloudflare;
+
+    expect($service->ipv4())->toEqual(['173.245.48.0/20'])
+        ->and($service->ipv6())->toEqual(['2400:cb00::/32'])
+        ->and($service->all())->toEqual(['173.245.48.0/20', '2400:cb00::/32']);
+
+    Log::shouldHaveReceived('warning')
+        ->withArgs(fn (string $message): bool => str_contains($message, 'could not be read'))
+        ->atLeast()->once();
 });
 
 it('shows fallback info in cacheInfo', function (): void {

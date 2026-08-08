@@ -10,9 +10,11 @@ Release that takes the trusted proxy list off the boot path.
 
 - **`TrustCloudflareProxies` middleware**, which reads the IP list while handling a request instead of while booting. Wire it with `$middleware->replace(TrustProxies::class, TrustCloudflareProxies::class)` in `bootstrap/app.php`.
 - **`trust_proxies.additional` config**: the proxies the middleware trusts alongside Cloudflare's ranges (a local web server, a load balancer, an ingress). The middleware does not consult `trustProxies(at: ...)`.
+- **`logging.unreachable_cache` and `logging.unreachable_cache_throttle` config**, for the warning below (default: on, throttled to once an hour through the durable store).
 
 ### Changed
 
+- **A cache store that cannot be read is now a miss, not an exception.** `all()`, `ipv4()` and `ipv6()` catch a failing read and continue down `last_good` → static fallback → `[]`, warning once per throttle window. The layers behind the cache exist precisely so there is always a list to serve; a store that is down, unmigrated or not configured yet should reach them rather than take the caller down. `cacheInfo()` and `refresh()` are deliberately unchanged: reporting on the cache and writing to it are supposed to fail loudly. The cached value is also normalized to a list of strings on read, as every other source already was.
 - **The documented wiring is no longer `app()->booted()` + `trustProxies(at: ...)`.** That recipe made a reachable cache store a condition of every boot, console included, and there is a boot without one in every checkout of an application: `composer install` runs `package:discover` before a `.env` exists, so `CACHE_STORE` falls back to `database` and every `php artisan` invocation dies on a database nobody has created yet. The old recipe still works wherever the cache is reachable at boot; replacing it removes the failure mode.
 
 ### Upgrading

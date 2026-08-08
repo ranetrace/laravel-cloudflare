@@ -66,6 +66,14 @@ return [
 
         // Throttle window (seconds) for the static-fallback warning, persisted durably.
         'static_fallback_throttle' => env('CLOUDFLARE_STATIC_FALLBACK_THROTTLE', 60 * 60),
+
+        // Whether to warn when the cache store cannot be read at all (down, or not
+        // set up yet). The read falls through to last_good and the static fallback
+        // rather than throwing, so without this the store failing is invisible.
+        'unreachable_cache' => env('CLOUDFLARE_LOG_UNREACHABLE_CACHE', true),
+
+        // Throttle window (seconds) for the unreachable-cache warning, persisted durably.
+        'unreachable_cache_throttle' => env('CLOUDFLARE_UNREACHABLE_CACHE_THROTTLE', 60 * 60),
     ],
 
     // Static fallback IPs used only as a cold-start floor, when both cache layers

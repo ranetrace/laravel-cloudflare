@@ -69,8 +69,8 @@ class LaravelCloudflare
         $keys = Config::get('laravel-cloudflare.cache.keys');
         $currentKey = Arr::get($keys, 'current.all', 'cloudflare:ips:current');
 
-        $current = $this->cache->get($currentKey);
-        if (is_array($current) && $current !== []) {
+        $current = $this->currentList($currentKey);
+        if ($current !== []) {
             return $this->memoized['all'] = $current;
         }
 
@@ -108,8 +108,8 @@ class LaravelCloudflare
         $keys = Config::get('laravel-cloudflare.cache.keys');
         $currentKey = Arr::get($keys, 'current.v4', 'cloudflare:ips:v4:current');
 
-        $current = $this->cache->get($currentKey);
-        if (is_array($current) && $current !== []) {
+        $current = $this->currentList($currentKey);
+        if ($current !== []) {
             return $this->memoized['ipv4'] = $current;
         }
 
@@ -146,8 +146,8 @@ class LaravelCloudflare
         $keys = Config::get('laravel-cloudflare.cache.keys');
         $currentKey = Arr::get($keys, 'current.v6', 'cloudflare:ips:v6:current');
 
-        $current = $this->cache->get($currentKey);
-        if (is_array($current) && $current !== []) {
+        $current = $this->currentList($currentKey);
+        if ($current !== []) {
             return $this->memoized['ipv6'] = $current;
         }
 
@@ -379,6 +379,69 @@ class LaravelCloudflare
                 'ipv6_count' => count($this->staticFallback('ipv6')),
             ],
         ];
+    }
+
+    /**
+     * Read the volatile "current" list, treating a cache store that cannot
+     * answer as a miss.
+     *
+     * A trusted proxy list is the wrong thing to fail a request over: this is
+     * the first of four layers, and the three behind it (last_good, the static
+     * fallback, the empty list) are all reachable without a cache. A store that
+     * is down, unmigrated or not configured yet — the `database` store on a
+     * fresh install, say — therefore falls through instead of throwing.
+     *
+     * Only this read is forgiving. cacheInfo() reports the state of the cache
+     * and refresh() writes to it, so both are supposed to fail loudly when the
+     * store is broken; that is the answer their callers asked for.
+     *
+     * @return array<int, string>
+     */
+    protected function currentList(string $key): array
+    {
+        try {
+            $current = $this->cache->get($key);
+        } catch (Throwable $e) {
+            $this->logUnreachableCache($key, $e);
+
+            return [];
+        }
+
+        if (! is_array($current)) {
+            return [];
+        }
+
+        return array_values(array_filter($current, 'is_string'));
+    }
+
+    /**
+     * Emit a throttled warning that the cache store could not be read.
+     *
+     * Throttled through the durable store, like the static-fallback warning: a
+     * store that is down is down for every key and every request behind it, and
+     * this warning is there to be noticed rather than to fill the log.
+     */
+    protected function logUnreachableCache(string $key, Throwable $e): void
+    {
+        if (! Config::get('laravel-cloudflare.logging.unreachable_cache', true)) {
+            return;
+        }
+
+        $throttle = (int) Config::get('laravel-cloudflare.logging.unreachable_cache_throttle', 3600);
+        $now = now()->getTimestamp();
+        $last = $this->durable->throttledAt('unreachable_cache');
+
+        if ($last !== null && $throttle > 0 && ($now - $last) < $throttle) {
+            return;
+        }
+
+        $this->durable->markThrottled('unreachable_cache', $now);
+
+        Log::warning('laravel-cloudflare: the cache store could not be read, falling back to last_good and the static fallback', [
+            'key' => $key,
+            'store' => Config::get('laravel-cloudflare.cache.store'),
+            'error' => $e->getMessage(),
+        ]);
     }
 
     /**

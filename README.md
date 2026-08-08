@@ -466,6 +466,8 @@ The package validates that fetched IPs are in valid CIDR notation before caching
 
 By default, when the cache is empty (both current and last_good), methods return an empty array and log a warning. This could silently break proxy trust configuration.
 
+A cache store that cannot be read *at all* — down, or not set up yet — is treated the same as an empty one by `all()`, `ipv4()` and `ipv6()`: the read continues to last_good and the static fallback instead of throwing, and a throttled warning is logged (`logging.unreachable_cache`, `logging.unreachable_cache_throttle`). The layers behind the cache exist so there is always a list to trust; a broken store should reach them rather than take the request down with it. `cacheInfo()` and `refresh()` do not swallow store failures: reporting on the cache and writing to it are supposed to fail loudly.
+
 To fail fast instead:
 ```php
 // In config/laravel-cloudflare.php or .env
