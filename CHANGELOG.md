@@ -2,6 +2,32 @@
 
 All notable changes to `laravel-cloudflare` will be documented in this file.
 
+## Unreleased
+
+Release that takes the trusted proxy list off the boot path.
+
+### Added
+
+- **`TrustCloudflareProxies` middleware**, which reads the IP list while handling a request instead of while booting. Wire it with `$middleware->replace(TrustProxies::class, TrustCloudflareProxies::class)` in `bootstrap/app.php`.
+- **`trust_proxies.additional` config**: the proxies the middleware trusts alongside Cloudflare's ranges (a local web server, a load balancer, an ingress). The middleware does not consult `trustProxies(at: ...)`.
+
+### Changed
+
+- **The documented wiring is no longer `app()->booted()` + `trustProxies(at: ...)`.** That recipe made a reachable cache store a condition of every boot, console included, and there is a boot without one in every checkout of an application: `composer install` runs `package:discover` before a `.env` exists, so `CACHE_STORE` falls back to `database` and every `php artisan` invocation dies on a database nobody has created yet. The old recipe still works wherever the cache is reachable at boot; replacing it removes the failure mode.
+
+### Upgrading
+
+Replace the `app()->booted()` block in `bootstrap/app.php` with:
+
+```php
+use Illuminate\Http\Middleware\TrustProxies;
+use Ranetrace\LaravelCloudflare\Http\Middleware\TrustCloudflareProxies;
+
+$middleware->replace(TrustProxies::class, TrustCloudflareProxies::class);
+```
+
+Extra proxies that were spread into the `trustProxies(at: ...)` array move to `trust_proxies.additional` in `config/laravel-cloudflare.php`.
+
 ## v3.0.0 - 2026-06-18
 
 Hardening release that prevents the package from ever handing `trustProxies()` an empty list.

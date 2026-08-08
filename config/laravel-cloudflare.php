@@ -34,6 +34,16 @@ return [
         'path' => env('CLOUDFLARE_LAST_GOOD_PATH', storage_path('laravel-cloudflare/last_good.json')),
     ],
 
+    // Read by the TrustCloudflareProxies middleware.
+    'trust_proxies' => [
+        // Proxies to trust besides Cloudflare's ranges: the hops that actually
+        // forward traffic to this application, such as a local web server
+        // (Nginx in front of Octane: '127.0.0.1', '::1'), a load balancer or an
+        // ingress. Everything listed here may supply forwarding headers, so
+        // keep it to the hops you control.
+        'additional' => [],
+    ],
+
     // HTTP client settings for fetching IP ranges from Cloudflare
     'http' => [
         'timeout' => env('CLOUDFLARE_HTTP_TIMEOUT', 10), // seconds

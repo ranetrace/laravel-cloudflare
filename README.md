@@ -149,26 +149,22 @@ use Illuminate\Support\Facades\Schedule;
 Schedule::command('cloudflare:refresh')->twiceDaily(); // or ->daily(), ->hourly(), etc.
 ```
 
-3. Trust Cloudflare proxies in `bootstrap/app.php`:
+3. Trust Cloudflare proxies in `bootstrap/app.php`, by putting the package's middleware in the place of the framework's:
 
 ```php
-use Ranetrace\LaravelCloudflare\LaravelCloudflare;
+use Illuminate\Http\Middleware\TrustProxies;
+use Ranetrace\LaravelCloudflare\Http\Middleware\TrustCloudflareProxies;
 
 ->withMiddleware(function (Middleware $middleware) {
     // Your other middleware interactions here...
 
-    app()->booted(function () use ($middleware) {
-        $cloudflareIps = app(\Ranetrace\LaravelCloudflare\LaravelCloudflare::class)->all();
-        $ipsToTrust = [
-            ...$cloudflareIps,
-            // Add any other IPs you want to trust here
-        ];
-        $middleware->trustProxies(at: $ipsToTrust);
-    });
+    $middleware->replace(TrustProxies::class, TrustCloudflareProxies::class);
 })
 ```
 
-Note: Use `app()->booted()` to ensure the application is fully booted and the cache is accessible.
+That is the whole wiring. `TrustCloudflareProxies` reads the list while it handles a request, so no part of booting the application depends on the cache being reachable. Reading it at boot instead — what earlier versions of this README recommended, inside an `app()->booted()` callback handed to `trustProxies(at: ...)` — makes a working cache store a condition of every `php artisan` invocation, and there is one without a working cache in every checkout: `composer install` runs `package:discover` before a `.env` exists, so `CACHE_STORE` falls back to `database` and the read hits a database nobody has created yet.
+
+Proxies to trust besides Cloudflare go in `trust_proxies.additional` (see [Determine which proxies to trust besides Cloudflare](#determine-which-proxies-to-trust-besides-cloudflare)). Everything else the framework's `TrustProxies` does, including the header set it honors, is inherited untouched.
 
 4. Use the `cache-info` command to see information about the currently cached IPs.
 
@@ -414,15 +410,24 @@ In addition to Cloudflare IPs, it's sometimes necessary to trust other proxies t
 - Running a local web server in front of your app (e.g., Nginx → Octane)? Also include the local upstreams, commonly `127.0.0.1` and `::1`.
 - Using a load balancer or ingress? Include its IP/CIDR (or the local web server that fronts your app).
 
+List those extra hops in `trust_proxies.additional`; `TrustCloudflareProxies` trusts them alongside the Cloudflare ranges:
+
+```php
+// config/laravel-cloudflare.php
+'trust_proxies' => [
+    'additional' => ['127.0.0.1', '::1'],
+],
+```
+
 Quick check: enable `CLOUDFLARE_DIAGNOSTICS_ENABLED=true` and visit `/cloudflare-diagnose`. If `laravel_ip` shows your real client IP and `is_secure` is true for HTTPS, you're set.
 
 Security tip: trust only the proxies that truly forward traffic to your app; avoid `'*'` on public apps.
 
 ## Using with Laravel Octane
 
-When you use this package to trust Cloudflare proxies via the `TrustProxies` middleware, while running behind Laravel Octane, keep the following in mind:
+When you use this package to trust Cloudflare proxies via the `TrustCloudflareProxies` middleware, while running behind Laravel Octane, keep the following in mind:
 
-The proxy IP list you define in `bootstrap/app.php` is loaded into memory and only updates when the Octane workers restart.
+The `LaravelCloudflare` service is a singleton that memoizes the list after the first read, and under Octane a singleton lives as long as the worker does. So the list is read once per worker and then held in memory until the worker restarts.
 
 Result: after you run `php artisan cloudflare:refresh`, workers do not immediately see the refreshed IP list.
 

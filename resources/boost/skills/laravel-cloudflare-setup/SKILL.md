@@ -35,23 +35,24 @@ php artisan cloudflare:refresh
 
 ### 4. Configure TrustProxies middleware
 
-In `bootstrap/app.php`, add the Cloudflare IPs to the trusted proxies configuration:
+In `bootstrap/app.php`, put the package's middleware in the place of the framework's:
 
 ```php
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\TrustProxies;
+use Ranetrace\LaravelCloudflare\Http\Middleware\TrustCloudflareProxies;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(/* ... */)
     ->withMiddleware(function (Middleware $middleware) {
-        app()->booted(function () use ($middleware) {
-            $cloudflareIps = app(\Ranetrace\LaravelCloudflare\LaravelCloudflare::class)->all();
-            $middleware->trustProxies(at: $cloudflareIps);
-        });
+        $middleware->replace(TrustProxies::class, TrustCloudflareProxies::class);
     })
     ->create();
 ```
 
-**Important**: The `app()->booted()` callback is required because the IPs are loaded from cache, which may not be available during early bootstrap.
+**Important**: Never resolve the IP list at boot — not in an `app()->booted()` callback handed to `trustProxies(at: ...)`, which earlier versions of this package recommended, and not anywhere else in `bootstrap/app.php`. The list comes from the cache, and a boot that needs the cache fails wherever the cache is not reachable yet: `composer install` runs `package:discover` before a `.env` exists, so `CACHE_STORE` falls back to `database` and every `php artisan` invocation dies on a database nobody has created. `TrustCloudflareProxies` reads the list while handling a request, the only moment proxy trust is needed.
+
+Proxies to trust besides Cloudflare (a local web server, a load balancer) go in `laravel-cloudflare.trust_proxies.additional`, not in a second `trustProxies(at: ...)` call — this middleware does not consult it.
 
 ### 5. Schedule automatic refreshes
 
@@ -129,6 +130,7 @@ Key settings in `config/laravel-cloudflare.php`:
 | `cache.store` | `null` | Cache store for the volatile `current` list (null = default) |
 | `cache.ttl` | 7 days | Cache duration in seconds for `current` |
 | `cache.allow_stale` | `true` | Fall back to durable last_good when `current` is missing |
+| `trust_proxies.additional` | `[]` | Proxies `TrustCloudflareProxies` trusts besides Cloudflare's ranges |
 | `last_good.path` | `storage_path('laravel-cloudflare/last_good.json')` | Durable last_good file (survives cache:clear/FLUSHDB) |
 | `fallback.ipv4` | `[]` | Override the bundled IPv4 fallback (empty = use bundled defaults) |
 | `fallback.ipv6` | `[]` | Override the bundled IPv6 fallback (empty = use bundled defaults) |
@@ -170,9 +172,10 @@ If `laravel_ip` matches `cf_connecting_ip`, proxy trust is configured correctly.
 
 ### Client IP still shows Cloudflare IP
 
-1. Ensure the `app()->booted()` wrapper is used in `bootstrap/app.php`
+1. Ensure `bootstrap/app.php` replaces `TrustProxies` with `TrustCloudflareProxies`
 2. Check that `X-Forwarded-For` header is being sent (use diagnostics endpoint)
 3. Verify the request is actually coming through Cloudflare
+4. If another proxy sits between Cloudflare and the app, add it to `trust_proxies.additional`
 
 ### First deployment with empty cache
 
