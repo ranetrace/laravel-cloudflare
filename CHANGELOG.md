@@ -2,7 +2,7 @@
 
 All notable changes to `laravel-cloudflare` will be documented in this file.
 
-## Unreleased
+## v3.0.1 - 2026-08-08
 
 Release that takes the trusted proxy list off the boot path.
 
