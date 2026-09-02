@@ -1,6 +1,11 @@
 ---
 name: laravel-cloudflare-setup
-description: Install and configure Laravel Cloudflare for proxy trust with Cloudflare CDN.
+description: >-
+  Install and configure Laravel Cloudflare: replace TrustProxies with
+  TrustCloudflareProxies, schedule IP refreshes, read the cached ranges. Use when
+  wiring proxy trust for Cloudflare, when the client IP still shows a Cloudflare
+  address, when IP lists come back empty, or when logs say the cache store could
+  not be read.
 ---
 
 # Laravel Cloudflare Setup
